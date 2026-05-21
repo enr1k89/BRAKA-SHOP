@@ -1,0 +1,9 @@
+{
+  "name": "braka-shop",
+  "version": "1.0.0",
+  "description": "brAkA Shop — Netlify Functions",
+  "dependencies": {
+    "stripe": "^14.0.0",
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}
