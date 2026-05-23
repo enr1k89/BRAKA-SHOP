@@ -1,10 +1,9 @@
 [build]
-  functions = "netlify/functions"
   publish = "."
+  functions = "functions"
 
 [functions]
   node_bundler = "esbuild"
-  directory = "netlify/functions"
 
 [[headers]]
   for = "/*"
