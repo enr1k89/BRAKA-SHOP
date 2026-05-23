@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>brAkA — Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+:root{--bg:#faf9f7;--surface:#fff;--surface2:#f5f4f2;--border:#e8e6e2;--accent:#1a1a1a;--accent2:#c8f03c;--muted:#999;--text:#1a1a1a;--font-display:'Bebas Neue',sans-serif;--font-mono:'DM Mono',monospace;--font-body:'DM Sans',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);}
+
+
+
+
+
+
+
+
+
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:70px;position:sticky;top:0;z-index:200;}
+.logo{font-family:var(--font-display);font-size:2.2rem;letter-spacing:4px;color:var(--accent);cursor:pointer;user-select:none;}
+.header-right{display:flex;align-items:center;gap:1rem;}
+.cart-btn{background:var(--accent);color:#fff;border:none;padding:.6rem 1.2rem;border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:.8rem;display:flex;align-items:center;gap:.5rem;transition:all .2s;}
+.cart-btn:hover{background:#333;}
+.cart-count{background:var(--accent2);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;}
+.hero{background:var(--accent);color:#fff;padding:4rem 2rem;text-align:center;position:relative;overflow:hidden;}
+.hero::before{content:'brAkA';position:absolute;font-family:var(--font-display);font-size:20rem;opacity:.04;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.hero h1{font-family:var(--font-display);font-size:4rem;letter-spacing:6px;margin-bottom:.5rem;}
+.hero p{font-family:var(--font-mono);font-size:.85rem;color:rgba(255,255,255,.6);}
+.hero-accent{color:var(--accent2);}
+.filtri{background:var(--surface);border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap;position:sticky;top:70px;z-index:100;}
+.search-input{flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.6rem 1rem;font-family:var(--font-mono);font-size:.85rem;border-radius:2px;outline:none;}
+.search-input:focus{border-color:var(--accent);}
+.filter-btn{padding:.5rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:.75rem;color:var(--text);transition:all .2s;white-space:nowrap;}
+.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.filter-btn:hover:not(.active){border-color:var(--accent);}
+.sort-sel{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.6rem 1rem;font-family:var(--font-mono);font-size:.75rem;border-radius:2px;outline:none;}
+.shop-container{max-width:1400px;margin:0 auto;padding:2rem;}
+.shop-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;}
+.shop-title{font-family:var(--font-display);font-size:1.5rem;letter-spacing:2px;}
+.count-label{font-family:var(--font-mono);font-size:.75rem;color:var(--muted);}
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.5rem;}
+.prod-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;cursor:pointer;transition:all .25s;position:relative;}
+.prod-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.1);border-color:var(--accent);}
+.prod-img-wrap{aspect-ratio:3/4;background:var(--surface2);overflow:hidden;position:relative;}
+.prod-img{width:100%;height:100%;object-fit:cover;transition:transform .4s;}
+.prod-card:hover .prod-img{transform:scale(1.05);}
+.prod-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:4rem;color:var(--border);}
+.prod-badge-esaurito{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.8);color:#fff;font-family:var(--font-mono);font-size:.65rem;padding:.2rem .5rem;border-radius:2px;text-transform:uppercase;letter-spacing:1px;}
+.quick-add{position:absolute;bottom:0;left:0;right:0;background:var(--accent);color:#fff;border:none;padding:.8rem;font-family:var(--font-mono);font-size:.8rem;cursor:pointer;text-transform:uppercase;letter-spacing:1px;transform:translateY(100%);transition:transform .25s;}
+.prod-card:hover .quick-add{transform:translateY(0);}
+.prod-info{padding:1rem;}
+.prod-cat{font-family:var(--font-mono);font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;}
+.prod-nome{font-size:.95rem;font-weight:600;margin-bottom:.3rem;}
+.prod-taglia{font-family:var(--font-mono);font-size:.75rem;color:var(--muted);margin-bottom:.5rem;}
+.prod-prezzo{font-family:var(--font-display);font-size:1.4rem;letter-spacing:1px;}
+.empty-state{text-align:center;padding:5rem 2rem;color:var(--muted);}
+.empty-icon{font-size:4rem;margin-bottom:1rem;}
+.empty-state h3{font-family:var(--font-display);font-size:2rem;letter-spacing:2px;margin-bottom:.5rem;color:var(--text);}
+.empty-state p{font-family:var(--font-mono);font-size:.8rem;}
+.loading-spin{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:1rem;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;}
+.cart-overlay.open{display:block;}
+.cart-sidebar{position:fixed;top:0;right:-420px;width:420px;max-width:100vw;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:501;display:flex;flex-direction:column;transition:right .3s ease;}
+.cart-sidebar.open{right:0;}
+.cart-header{padding:1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.cart-title{font-family:var(--font-display);font-size:1.8rem;letter-spacing:2px;}
+.cart-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);}
+.cart-close:hover{color:var(--accent);}
+.cart-items{flex:1;overflow-y:auto;padding:1rem 1.5rem;}
+.cart-empty{text-align:center;padding:3rem;color:var(--muted);font-family:var(--font-mono);font-size:.85rem;}
+.cart-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border);align-items:center;}
+.cart-item-img{width:70px;height:90px;object-fit:cover;border-radius:2px;border:1px solid var(--border);flex-shrink:0;}
+.cart-item-img-ph{width:70px;height:90px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;}
+.cart-item-info{flex:1;}
+.cart-item-nome{font-size:.9rem;font-weight:600;margin-bottom:.2rem;}
+.cart-item-det{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);margin-bottom:.5rem;}
+.cart-item-price{font-family:var(--font-display);font-size:1.2rem;}
+.qty-ctrl{display:flex;align-items:center;gap:.5rem;margin-top:.4rem;}
+.qty-btn{width:24px;height:24px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;}
+.qty-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
+.qty-val{font-family:var(--font-mono);font-size:.85rem;width:24px;text-align:center;}
+.remove-item{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;}
+.remove-item:hover{color:red;}
+.cart-footer{padding:1.5rem;border-top:1px solid var(--border);}
+.cart-totale{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;}
+.cart-totale-label{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);}
+.cart-totale-val{font-family:var(--font-display);font-size:2rem;}
+.btn-checkout{width:100%;background:var(--accent);color:#fff;border:none;padding:1rem;font-family:var(--font-mono);font-size:.9rem;text-transform:uppercase;letter-spacing:2px;cursor:pointer;border-radius:2px;transition:all .2s;}
+.btn-checkout:hover{background:#333;}
+.btn-checkout:disabled{background:var(--muted);cursor:not-allowed;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:600;align-items:center;justify-content:center;padding:1rem;}
+.modal-overlay.open{display:flex;}
+.modal-prod{background:var(--surface);border-radius:4px;width:90%;max-width:800px;max-height:90vh;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;position:relative;}
+.modal-img-wrap{aspect-ratio:3/4;background:var(--surface2);overflow:hidden;}
+.modal-img{width:100%;height:100%;object-fit:cover;}
+.modal-img-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6rem;color:var(--border);}
+.modal-info{padding:2rem;display:flex;flex-direction:column;}
+.modal-cat{font-family:var(--font-mono);font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;}
+.modal-nome{font-size:1.5rem;font-weight:700;margin-bottom:.5rem;}
+.modal-prezzo{font-family:var(--font-display);font-size:2.5rem;margin-bottom:1rem;}
+.modal-dettagli{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);line-height:2;margin-bottom:1rem;}
+.modal-desc{font-size:.9rem;color:#555;line-height:1.7;margin-bottom:1.5rem;flex:1;}
+.modal-close-btn{position:absolute;top:1rem;right:1rem;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:1.2rem;z-index:10;}
+.btn-add-modal{background:var(--accent);color:#fff;border:none;padding:1rem;font-family:var(--font-mono);font-size:.9rem;text-transform:uppercase;letter-spacing:2px;cursor:pointer;border-radius:2px;width:100%;}
+.btn-add-modal:disabled{background:var(--muted);cursor:not-allowed;}
+.modal-checkout{background:var(--surface);border-radius:4px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;padding:2rem;}
+.form-group{margin-bottom:1rem;}
+.form-label{display:block;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem;font-family:var(--font-mono);}
+.form-input,.form-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.7rem .8rem;font-family:var(--font-body);font-size:.9rem;border-radius:2px;outline:none;}
+.form-input:focus,.form-textarea:focus{border-color:var(--accent);}
+.form-textarea{resize:vertical;min-height:70px;}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--accent);color:#fff;padding:.8rem 2rem;border-radius:2px;font-family:var(--font-mono);font-size:.8rem;z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.success{background:#2d7a1f;}
+footer{background:var(--accent);color:rgba(255,255,255,.5);text-align:center;padding:2rem;font-family:var(--font-mono);font-size:.75rem;margin-top:4rem;}
+footer strong{color:#fff;}
+@media(max-width:600px){
+  .hero h1{font-size:2.5rem;}.filtri{padding:.7rem 1rem;}.shop-container{padding:1rem;}
+  .modal-prod{grid-template-columns:1fr;}.modal-img-wrap{aspect-ratio:4/3;}
+  .cart-sidebar{width:100vw;}.prod-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;}
+  
+}
+</style>
+</head>
+<body>
+
+<script>
+// ══════════════════════════════════════════
+//  ⚙️  CONFIGURA QUI — SUPABASE
+//  Copia da: supabase.com → Project Settings → API
+// ══════════════════════════════════════════
+const SUPABASE_URL = 'https://qckdgobbctufpqttcshe.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFja2Rnb2JiY3R1ZnBxdHRjc2hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5OTQ1OTIsImV4cCI6MjA5NDU3MDU5Mn0.5LCVKnUZD7DNnUscitRdqUbPkSG4R_Zf90b4m21GVB4';
+const WA_NUMBER   = '+393932874699';
+const STRIPE_PK   = 'pk_live_51TYpvsKTw3ZF3KU4qtlqh3FwCK8WnC1RHKHuVYt6bbVCac0fD4IlrOPwKa6egpdLzrnu49kkMG2C51ywyJ4ehDqs008qbeoGcf';
+// ══════════════════════════════════════════
+</script>
+
+
+<div class="header">
+  <span class="logo" id="logo-click">brAkA</span>
+  <div class="header-right">
+    <button class="cart-btn" onclick="toggleCart()">
+      🛍️ Carrello <span class="cart-count" id="cart-count">0</span>
+    </button>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>brA<span class="hero-accent">kA</span></h1>
+  <p>MODA · STILE · QUALITÀ</p>
+</div>
+
+
+<div class="filtri">
+  <input type="text" class="search-input" id="search-shop" placeholder="Cerca prodotti..." oninput="renderShop()">
+  <div id="cat-filters" style="display:flex;gap:.5rem;flex-wrap:wrap;"></div>
+  <select class="sort-sel" id="sort-sel" onchange="renderShop()">
+    <option value="default">Ordine default</option>
+    <option value="prezzo-asc">Prezzo ↑</option>
+    <option value="prezzo-desc">Prezzo ↓</option>
+    <option value="nome-asc">Nome A-Z</option>
+  </select>
+</div>
+
+<div class="shop-container">
+  <div class="shop-header">
+    <div class="shop-title">Tutti i Prodotti</div>
+    <div class="count-label" id="shop-count"></div>
+  </div>
+  <div class="prod-grid" id="prod-grid">
+    <div class="empty-state" style="grid-column:1/-1;">
+      <div class="loading-spin"></div>
+      <p style="font-family:var(--font-mono);font-size:.85rem;color:var(--muted);">Caricamento...</p>
+    </div>
+  </div>
+</div>
+
+<!-- CART SIDEBAR -->
+<div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+<div class="cart-sidebar" id="cart-sidebar">
+  <div class="cart-header">
+    <div class="cart-title">Carrello</div>
+    <button class="cart-close" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cart-items"><div class="cart-empty">Il carrello è vuoto</div></div>
+  <div class="cart-footer">
+    <div class="cart-totale">
+      <span class="cart-totale-label">Totale articoli</span>
+      <span class="cart-totale-val" id="cart-totale">€0,00</span>
+    </div>
+    <button class="btn-checkout" onclick="apriCheckout()" id="btn-checkout" disabled>Procedi all'ordine →</button>
+  </div>
+</div>
+
+<!-- MODAL PRODOTTO -->
+<div class="modal-overlay" id="modal-prod" onclick="if(event.target===this)chiudiModalProd()">
+  <div class="modal-prod" id="modal-prod-content"></div>
+</div>
+
+<!-- CHECKOUT -->
+<div class="modal-overlay" id="modal-checkout" onclick="if(event.target===this)chiudiCheckout()">
+  <div class="modal-checkout">
+    <div style="font-family:var(--font-display);font-size:1.8rem;letter-spacing:2px;margin-bottom:1.5rem;">Completa l'Ordine</div>
+
+    <!-- STEP 1: DATI CLIENTE -->
+    <div id="step-dati">
+      <div id="checkout-riepilogo" style="background:var(--surface2);border-radius:2px;padding:1rem;margin-bottom:1.5rem;font-family:var(--font-mono);font-size:.8rem;"></div>
+      <div class="form-group"><label class="form-label">Nome e Cognome *</label><input type="text" class="form-input" id="co-nome" placeholder="Mario Rossi"></div>
+      <div class="form-group"><label class="form-label">Numero WhatsApp *</label><input type="tel" class="form-input" id="co-tel" placeholder="+39 333 1234567"></div>
+      <div class="form-group"><label class="form-label">Indirizzo di spedizione *</label><input type="text" class="form-input" id="co-indirizzo" placeholder="Via Roma 1, 00100 Roma"></div>
+      <div class="form-group"><label class="form-label">Note aggiuntive</label><textarea class="form-textarea" id="co-note" placeholder="Istruzioni speciali, taglia preferita..."></textarea></div>
+      <button class="btn-checkout" onclick="vaAlPagamento()" style="background:var(--accent);">Continua al pagamento →</button>
+      <button onclick="chiudiCheckout()" style="width:100%;margin-top:.7rem;background:none;border:1px solid var(--border);padding:.7rem;font-family:var(--font-mono);font-size:.8rem;cursor:pointer;border-radius:2px;">Annulla</button>
+    </div>
+
+    <!-- STEP 2: PAGAMENTO STRIPE -->
+    <div id="step-pagamento" style="display:none;">
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.5rem;cursor:pointer;" onclick="tornaAiDati()">
+        <span style="font-family:var(--font-mono);font-size:.8rem;color:var(--muted);">← Torna ai dati</span>
+      </div>
+
+      <div id="riepilogo-pagamento" style="background:var(--surface2);border-radius:2px;padding:1rem;margin-bottom:1.5rem;font-family:var(--font-mono);font-size:.8rem;"></div>
+
+      <!-- Card Element Stripe -->
+      <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Dati carta</div>
+      <div id="stripe-card-element" style="background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:.8rem;margin-bottom:1rem;"></div>
+      <div id="stripe-card-errors" style="color:#ff4d4d;font-family:var(--font-mono);font-size:.75rem;margin-bottom:1rem;display:none;"></div>
+
+      <!-- Metodi alternativi -->
+      <div style="text-align:center;font-family:var(--font-mono);font-size:.75rem;color:var(--muted);margin-bottom:1rem;">oppure paga con</div>
+      <div id="stripe-payment-request" style="margin-bottom:1rem;"></div>
+
+      <button class="btn-checkout" id="btn-paga" onclick="eseguiPagamento()">
+        🔒 PAGA ORA
+      </button>
+
+      <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1rem;">
+        <span style="font-size:1.2rem;">🔒</span>
+        <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Pagamento sicuro · Powered by Stripe</span>
+      </div>
+
+      <div style="margin-top:.7rem;text-align:center;">
+        <img src="https://js.stripe.com/v3/fingerprinted/img/payment-method-logos/visa.svg" style="height:20px;margin:0 4px;opacity:.6;">
+        <img src="https://js.stripe.com/v3/fingerprinted/img/payment-method-logos/mastercard.svg" style="height:20px;margin:0 4px;opacity:.6;">
+        <img src="https://js.stripe.com/v3/fingerprinted/img/payment-method-logos/apple-pay.svg" style="height:20px;margin:0 4px;opacity:.6;">
+        <img src="https://js.stripe.com/v3/fingerprinted/img/payment-method-logos/google-pay.svg" style="height:20px;margin:0 4px;opacity:.6;">
+      </div>
+    </div>
+
+    <!-- STEP 3: SUCCESSO -->
+    <div id="step-successo" style="display:none;text-align:center;padding:2rem 0;">
+      <div style="font-size:4rem;margin-bottom:1rem;">✅</div>
+      <div style="font-family:var(--font-display);font-size:2rem;letter-spacing:2px;margin-bottom:.5rem;">PAGAMENTO OK!</div>
+      <div id="successo-ordine-num" style="font-family:var(--font-mono);font-size:.85rem;color:var(--muted);margin-bottom:1.5rem;"></div>
+      <div style="font-size:.9rem;line-height:1.8;margin-bottom:1.5rem;">Riceverai conferma su WhatsApp.<br>Conserva il numero ordine.</div>
+      <button class="btn-checkout" id="btn-wa-successo" onclick="mandaWA()">📱 Conferma su WhatsApp</button>
+    </div>
+
+  </div>
+</div>
+
+
+<footer><strong>brAkA</strong> · Moda Donna · Tutti i diritti riservati</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── INIT SUPABASE ──
+let sb = null;
+try {
+  if (!SUPABASE_URL.includes('INCOLLA')) {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+} catch(e) {}
+
+// ── STATE ──
+let prodotti = [];
+let carrello = JSON.parse(localStorage.getItem('braka_carrello') || '[]');
+let filtroCategoria = '';
+
+// ── CARICA PRODOTTI ──
+async function caricaProdotti() {
+  try {
+    if (!sb) throw new Error('no supabase');
+
+    // Seleziona SOLO le colonne necessarie — no base64, no dati pesanti
+    const { data, error } = await sb
+      .from('products')
+      .select('id, sku, name, category, size, color, price, stock, description, image, visible')
+      .neq('visible', false)
+      .gt('stock', 0)
+      .order('id', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    prodotti = (data || []).map(p => ({
+      id: String(p.id),
+      sku: p.sku || ('SKU-' + p.id),
+      nome: p.name || '',
+      categoria: p.category || '',
+      taglia: p.size || '',
+      colore: p.color || '',
+      prezzo: parseFloat(p.price || 0),
+      qta: parseInt(p.stock || 0),
+      descrizione: p.description || '',
+      foto: p.image ? [p.image] : []
+    }));
+
+    console.log('✅ Prodotti:', prodotti.length);
+
+  } catch(e) {
+    console.warn('Supabase error:', e.message);
+    // Fallback: mostra array vuoto, non caricare base64 dal localStorage
+    prodotti = [];
+    document.getElementById('prod-grid').innerHTML = `
+      <div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-icon">⚠️</div>
+        <h3>Errore di connessione</h3>
+        <p style="margin-bottom:1rem;">Ricarica la pagina per riprovare</p>
+        <button onclick="location.reload()" style="background:var(--accent);color:#fff;border:none;padding:.7rem 1.5rem;border-radius:2px;cursor:pointer;font-family:var(--font-mono);font-size:.8rem;">🔄 Ricarica</button>
+      </div>`;
+    return;
+  }
+  renderCatFilters();
+  renderShop();
+}
+
+// ── FILTRI ──
+function renderCatFilters() {
+  const cats = [...new Set(prodotti.map(p => p.categoria).filter(Boolean))];
+  document.getElementById('cat-filters').innerHTML =
+    `<button class="filter-btn ${!filtroCategoria ? 'active' : ''}" onclick="setFilter('')">Tutti</button>` +
+    cats.map(c => `<button class="filter-btn ${filtroCategoria === c ? 'active' : ''}" onclick="setFilter('${c}')">${c}</button>`).join('');
+}
+function setFilter(cat) { filtroCategoria = cat; renderCatFilters(); renderShop(); }
+
+// ── RENDER SHOP ──
+function renderShop() {
+  const q = document.getElementById('search-shop').value.toLowerCase();
+  const sort = document.getElementById('sort-sel').value;
+  let filtered = prodotti.filter(p => {
+    const mQ = !q || p.nome.toLowerCase().includes(q) || (p.categoria||'').toLowerCase().includes(q) || (p.colore||'').toLowerCase().includes(q);
+    const mC = !filtroCategoria || p.categoria === filtroCategoria;
+    return mQ && mC;
+  });
+  if (sort === 'prezzo-asc') filtered.sort((a,b) => a.prezzo - b.prezzo);
+  else if (sort === 'prezzo-desc') filtered.sort((a,b) => b.prezzo - a.prezzo);
+  else if (sort === 'nome-asc') filtered.sort((a,b) => a.nome.localeCompare(b.nome));
+  document.getElementById('shop-count').textContent = filtered.length + ' prodotti';
+  const grid = document.getElementById('prod-grid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🔍</div><h3>Nessun risultato</h3><p>Prova con altri filtri</p></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(p => `
+    <div class="prod-card" onclick="apriProdotto('${p.id}')">
+      <div class="prod-img-wrap">
+        ${p.foto && p.foto[0] ? `<img src="${p.foto[0]}" class="prod-img" alt="${p.nome}">` : '<div class="prod-img-placeholder">👗</div>'}
+        ${p.qta === 0 ? '<div class="prod-badge-esaurito">Esaurito</div>' : ''}
+        ${p.qta > 0 ? `<button class="quick-add" onclick="event.stopPropagation();aggiungiAlCarrello('${p.id}')">+ Aggiungi</button>` : ''}
+      </div>
+      <div class="prod-info">
+        <div class="prod-cat">${p.categoria || '—'}</div>
+        <div class="prod-nome">${p.nome}</div>
+        <div class="prod-taglia">${p.taglia ? 'T:' + p.taglia : ''}${p.colore ? (p.taglia ? ' · ' : '') + p.colore : ''}</div>
+        <div class="prod-prezzo">€${p.prezzo.toFixed(2)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── MODAL PRODOTTO ──
+function apriProdotto(id) {
+  const p = prodotti.find(x => x.id === id); if (!p) return;
+  document.getElementById('modal-prod-content').innerHTML = `
+    <button class="modal-close-btn" onclick="chiudiModalProd()">✕</button>
+    <div class="modal-img-wrap">${p.foto && p.foto[0] ? `<img src="${p.foto[0]}" class="modal-img">` : '<div class="modal-img-ph">👗</div>'}</div>
+    <div class="modal-info">
+      <div class="modal-cat">${p.categoria || '—'}</div>
+      <div class="modal-nome">${p.nome}</div>
+      <div class="modal-prezzo">€${p.prezzo.toFixed(2)}</div>
+      <div class="modal-dettagli">
+        ${p.taglia ? `<div>Taglia: <strong>${p.taglia}</strong></div>` : ''}
+        ${p.colore ? `<div>Colore: <strong>${p.colore}</strong></div>` : ''}
+        ${p.materiale ? `<div>Materiale: <strong>${p.materiale}</strong></div>` : ''}
+        ${p.sku ? `<div>SKU: <strong>${p.sku}</strong></div>` : ''}
+      </div>
+      ${p.descrizione ? `<div class="modal-desc">${p.descrizione}</div>` : '<div style="flex:1"></div>'}
+      <button class="btn-add-modal" onclick="aggiungiAlCarrello('${p.id}');chiudiModalProd()" ${p.qta === 0 ? 'disabled' : ''}>
+        ${p.qta === 0 ? 'Prodotto Esaurito' : '+ Aggiungi al carrello'}
+      </button>
+    </div>`;
+  document.getElementById('modal-prod').classList.add('open');
+}
+function chiudiModalProd() { document.getElementById('modal-prod').classList.remove('open'); }
+
+// ── CARRELLO ──
+function aggiungiAlCarrello(id) {
+  const p = prodotti.find(x => x.id === id); if (!p || p.qta === 0) return;
+  const ex = carrello.find(x => x.id === id);
+  if (ex) { if (ex.qta < p.qta) ex.qta++; else { showToast('Quantità massima raggiunta'); return; } }
+  else carrello.push({ id, sku: p.sku, nome: p.nome, prezzo: p.prezzo, qta: 1, foto: p.foto && p.foto[0] ? p.foto[0] : null, taglia: p.taglia, colore: p.colore });
+  salvaCarrello(); renderCarrello(); showToast('✓ Aggiunto al carrello');
+}
+function renderCarrello() {
+  const count = carrello.reduce((s, i) => s + i.qta, 0);
+  const totale = carrello.reduce((s, i) => s + parseFloat(i.prezzo) * i.qta, 0);
+  document.getElementById('cart-count').textContent = count;
+  document.getElementById('cart-totale').textContent = '€' + totale.toFixed(2).replace('.', ',');
+  document.getElementById('btn-checkout').disabled = !carrello.length;
+  const cont = document.getElementById('cart-items');
+  if (!carrello.length) { cont.innerHTML = '<div class="cart-empty">Il carrello è vuoto</div>'; return; }
+  cont.innerHTML = carrello.map((item, i) => `
+    <div class="cart-item">
+      ${item.foto ? `<img src="${item.foto}" class="cart-item-img">` : '<div class="cart-item-img-ph">👗</div>'}
+      <div class="cart-item-info">
+        <div class="cart-item-nome">${item.nome}</div>
+        <div class="cart-item-det">${item.taglia ? 'T:' + item.taglia + ' ' : ''}${item.colore || ''}</div>
+        <div class="cart-item-price">€${(parseFloat(item.prezzo) * item.qta).toFixed(2)}</div>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="cambiaQta(${i},-1)">−</button>
+          <span class="qty-val">${item.qta}</span>
+          <button class="qty-btn" onclick="cambiaQta(${i},1)">+</button>
+        </div>
+      </div>
+      <button class="remove-item" onclick="rimuoviItem(${i})">🗑️</button>
+    </div>`).join('');
+}
+function cambiaQta(i, dir) { carrello[i].qta += dir; if (carrello[i].qta <= 0) carrello.splice(i, 1); salvaCarrello(); renderCarrello(); }
+function rimuoviItem(i) { carrello.splice(i, 1); salvaCarrello(); renderCarrello(); }
+function salvaCarrello() {
+  // Salva carrello senza foto base64 per non intasare localStorage
+  const carrelloSlim = carrello.map(i => ({
+    id: i.id, sku: i.sku, nome: i.nome, prezzo: i.prezzo,
+    qta: i.qta, taglia: i.taglia, colore: i.colore,
+    // Salva foto solo se è un URL, non base64
+    foto: i.foto && !i.foto.startsWith('data:') ? i.foto : null
+  }));
+  try {
+    localStorage.setItem('braka_carrello', JSON.stringify(carrelloSlim));
+  } catch(e) {
+    // Se localStorage è pieno, svuota e riprova
+    localStorage.removeItem('braka_carrello');
+    localStorage.removeItem('braka_prodotti');
+    localStorage.removeItem('braka_ordini');
+    try { localStorage.setItem('braka_carrello', JSON.stringify(carrelloSlim)); } catch(e2) {}
+  }
+}
+function toggleCart() { document.getElementById('cart-sidebar').classList.toggle('open'); document.getElementById('cart-overlay').classList.toggle('open'); }
+
+// ── STRIPE INIT ──
+const stripeClient = Stripe(STRIPE_PK);
+const stripeElements = stripeClient.elements();
+const cardElement = stripeElements.create('card', {
+  style: {
+    base: { color:'#1a1a1a', fontFamily:'"DM Mono",monospace', fontSize:'16px', '::placeholder':{ color:'#999' } },
+    invalid: { color:'#ff4d4d' }
+  }
+});
+let stripeCardMounted = false;
+let ordineCorrente = null;
+let msgWACorrente = '';
+
+// ── CHECKOUT STEP 1: DATI ──
+function apriCheckout() {
+  if (!carrello.length) return;
+  const totale = carrello.reduce((s,i)=>s+parseFloat(i.prezzo)*i.qta,0);
+  document.getElementById('checkout-riepilogo').innerHTML =
+    carrello.map(i=>`<div style="display:flex;justify-content:space-between;padding:.2rem 0;"><span>${i.nome} ×${i.qta}</span><span>€${(parseFloat(i.prezzo)*i.qta).toFixed(2)}</span></div>`).join('') +
+    `<div style="border-top:1px solid var(--border);margin-top:.5rem;padding-top:.5rem;display:flex;justify-content:space-between;font-weight:700;"><span>Totale</span><span>€${totale.toFixed(2)}</span></div>`;
+  document.getElementById('step-dati').style.display='block';
+  document.getElementById('step-pagamento').style.display='none';
+  document.getElementById('step-successo').style.display='none';
+  document.getElementById('modal-checkout').classList.add('open');
+}
+function chiudiCheckout() { document.getElementById('modal-checkout').classList.remove('open'); }
+function tornaAiDati() {
+  document.getElementById('step-dati').style.display='block';
+  document.getElementById('step-pagamento').style.display='none';
+}
+
+// ── CHECKOUT STEP 2: PAGAMENTO ──
+async function vaAlPagamento() {
+  const nome = document.getElementById('co-nome').value.trim();
+  const tel  = document.getElementById('co-tel').value.trim();
+  const ind  = document.getElementById('co-indirizzo').value.trim();
+  const note = document.getElementById('co-note').value.trim();
+  if (!nome||!tel||!ind) { showToast('Compila tutti i campi obbligatori'); return; }
+
+  const btn = document.querySelector('#step-dati .btn-checkout');
+  btn.disabled=true; btn.textContent='⏳ Preparazione...';
+
+  const totale = carrello.reduce((s,i)=>s+parseFloat(i.prezzo)*i.qta,0);
+  const anno = new Date().getFullYear();
+  let ordineId;
+
+  try {
+    if (sb) {
+      const { count } = await sb.from('orders').select('*',{count:'exact',head:true}).gte('created_at',anno+'-01-01T00:00:00');
+      ordineId = `BRK-${anno}-${String((count||0)+1).padStart(4,'0')}`;
+    } else {
+      const ord = JSON.parse(localStorage.getItem('braka_ordini')||'[]');
+      ordineId = `BRK-${anno}-${String(ord.filter(o=>o.anno===anno).length+1).padStart(4,'0')}`;
+    }
+
+    const res = await fetch('/.netlify/functions/create-payment', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ carrello, cliente:{nome,tel,indirizzo:ind}, ordineId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error||'Errore pagamento');
+
+    ordineCorrente = { ordineId, nome, tel, ind, note, totale, clientSecret: data.clientSecret };
+
+    document.getElementById('riepilogo-pagamento').innerHTML =
+      `<div style="display:flex;justify-content:space-between;"><span>Ordine</span><strong style="color:#1a1a1a;">${ordineId}</strong></div>` +
+      `<div style="display:flex;justify-content:space-between;margin-top:.5rem;"><span>Totale</span><strong>€${totale.toFixed(2)}</strong></div>`;
+
+    document.getElementById('step-dati').style.display='none';
+    document.getElementById('step-pagamento').style.display='block';
+
+    if (!stripeCardMounted) {
+      cardElement.mount('#stripe-card-element');
+      stripeCardMounted = true;
+      cardElement.on('change', e => {
+        const el = document.getElementById('stripe-card-errors');
+        if (e.error) { el.textContent=e.error.message; el.style.display='block'; }
+        else el.style.display='none';
+      });
+    }
+
+    // Apple Pay / Google Pay
+    const pr = stripeClient.paymentRequest({
+      country:'IT', currency:'eur',
+      total:{ label:'brAkA — '+ordineId, amount: Math.round(totale*100) },
+      requestPayerName:true
+    });
+    pr.canMakePayment().then(result => {
+      if (result) { stripeElements.create('paymentRequestButton',{paymentRequest:pr}).mount('#stripe-payment-request'); }
+      else document.getElementById('stripe-payment-request').style.display='none';
+    });
+    pr.on('paymentmethod', async e => { await completaPagamento(e.paymentMethod.id, e); });
+
+  } catch(err) {
+    showToast(err.message||'Errore, riprova', true);
+  }
+  btn.disabled=false; btn.textContent='Continua al pagamento →';
+}
+
+// ── STEP 3: ESEGUI PAGAMENTO CARTA ──
+async function eseguiPagamento() {
+  if (!ordineCorrente) return;
+  const btn = document.getElementById('btn-paga');
+  btn.disabled=true; btn.textContent='⏳ Elaborazione...';
+  const { error, paymentIntent } = await stripeClient.confirmCardPayment(
+    ordineCorrente.clientSecret,
+    { payment_method:{ card:cardElement, billing_details:{ name:ordineCorrente.nome } } }
+  );
+  if (error) {
+    const el=document.getElementById('stripe-card-errors');
+    el.textContent=error.message; el.style.display='block';
+    btn.disabled=false; btn.textContent='🔒 PAGA ORA'; return;
+  }
+  if (paymentIntent.status==='succeeded') await salvaOrdineDopoStripe();
+}
+
+async function completaPagamento(pmId, prEvent) {
+  const { error, paymentIntent } = await stripeClient.confirmCardPayment(
+    ordineCorrente.clientSecret, { payment_method:pmId }, { handleActions:false }
+  );
+  if (error) { prEvent.complete('fail'); return; }
+  prEvent.complete('success');
+  if (paymentIntent.status==='succeeded') await salvaOrdineDopoStripe();
+}
+
+async function salvaOrdineDopoStripe() {
+  const { ordineId, nome, tel, ind, note, totale } = ordineCorrente;
+  try {
+    if (sb) {
+      const { data:order } = await sb.from('orders').insert({
+        order_number:ordineId, customer_name:nome, customer_phone:tel,
+        customer_address:ind, notes:note, total:totale, status:'PAGATO', shipping:null
+      }).select().single();
+      for (const item of carrello) {
+        await sb.from('order_items').insert({ order_id:order.id, product_id:parseInt(item.id), product_name:item.nome, product_sku:item.sku||'', qty:item.qta, price:parseFloat(item.prezzo)*item.qta });
+        const p = prodotti.find(x=>x.id===item.id);
+        if (p) await sb.from('products').update({stock:p.qta-item.qta}).eq('id',parseInt(item.id));
+      }
+    }
+  } catch(e) { console.error(e); }
+
+  const righe = carrello.map(i=>`• ${i.nome}${i.taglia?' (T:'+i.taglia+')':''} ×${i.qta} — €${(parseFloat(i.prezzo)*i.qta).toFixed(2)}`).join('\n');
+  msgWACorrente = `✅ *ORDINE PAGATO — brAkA*\n📋 *Ordine: ${ordineId}*\n📅 ${new Date().toLocaleDateString('it-IT')} ore ${new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}\n\n👤 *Cliente:* ${nome}\n📞 *Tel:* ${tel}\n🏠 *Indirizzo:* ${ind}\n\n*Prodotti:*\n${righe}\n\n💰 *TOTALE PAGATO: €${totale.toFixed(2)}*\n💳 Pagamento carta (Stripe)\n\n━━━━━━━━━━━━━━━\nNumero ordine: *${ordineId}*${note?'\n\n📝 Note: '+note:''}`;
+
+  carrello=[]; salvaCarrello(); renderCarrello();
+  document.getElementById('step-pagamento').style.display='none';
+  document.getElementById('step-successo').style.display='block';
+  document.getElementById('successo-ordine-num').textContent='Numero ordine: '+ordineId;
+  caricaProdotti();
+}
+
+function mandaWA() {
+  chiudiCheckout();
+  setTimeout(()=>{ window.open('https://wa.me/'+WA_NUMBER.replace(/\D/g,'')+'?text='+encodeURIComponent(msgWACorrente),'_blank'); },300);
+}
+
+async function inviaOrdine() { await vaAlPagamento(); }
+
+// ── TOAST ──
+function showToast(msg, success = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (success ? ' success' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ── TRIPLE CLICK LOGO → ADMIN ──
+(function () {
+  let clicks = 0, timer = null;
+  document.getElementById('logo-click').addEventListener('click', function () {
+    clicks++; clearTimeout(timer);
+    if (clicks >= 3) { clicks = 0; this.style.color = '#c8f03c'; window.location.href = 'vestit-admin.html'; }
+    else timer = setTimeout(() => { clicks = 0; }, 600);
+  });
+})();
+
+// ── INIT ──
+caricaProdotti();
+renderCarrello();
+</script>
+</body>
+</html>
